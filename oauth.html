@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ykjAEd7gCxrrGhE6bs80geJWpccUzWNDOm+pSnJH9eQ='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Autopost — возврат после входа</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 36rem; margin: 4rem auto; padding: 0 1rem; color: #1d1d1f; }
+  a { color: #0a58ca; }
+</style>
+</head>
+<body>
+<!--
+  Страница-переходник OAuth для Autopost (локальная программа на ноутбуке владельца).
+  Площадки, которым нужен https-адрес возврата, возвращают браузер сюда, а страница сразу пересылает
+  только code, state и error на локальный адрес программы. Площадка — из префикса state («threads.…»).
+  Ничего не хранит и не отправляет третьим лицам: без сторонних скриптов, запросов и счётчиков.
+  Источник — legal/oauth.html в репозитории autopost; хэш скрипта в CSP проверяет test/oauth-trampoline.test.mjs.
+-->
+<main>
+  <p id="msg">Возвращаю в Autopost… / Returning to Autopost…</p>
+  <p><a id="go" hidden>Если не перешло само — нажми здесь / Continue</a></p>
+</main>
+<script>
+(function () {
+  'use strict'
+  var TARGET = 'http://127.0.0.1:3000/oauth/'
+  var STATE_RE = /^([a-z][a-z0-9_]{0,31})\.[A-Za-z0-9_-]{43}$/
+  var msg = document.getElementById('msg')
+  var link = document.getElementById('go')
+  var q = new URLSearchParams(location.search)
+  var state = q.get('state') || ''
+  var m = STATE_RE.exec(state)
+  if (!m) {
+    msg.textContent = 'Не понимаю, куда вернуть вход: нет параметра state или он чужой. Начни подключение заново в Autopost. / ' +
+      'Unknown or missing state: start the connection again in Autopost.'
+    return
+  }
+  var out = new URLSearchParams()
+  var code = q.get('code')
+  var error = q.get('error')
+  if (code) out.set('code', code)
+  if (error) out.set('error', error)
+  out.set('state', state)
+  var url = TARGET + m[1] + '/callback?' + out.toString()
+  link.href = url
+  link.hidden = false
+  location.replace(url)
+})()
+</script>
+</body>
+</html>
